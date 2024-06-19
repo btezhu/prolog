@@ -190,8 +190,8 @@ class AddingRules:
 		Rule.adding = self.old_adding
 
 def add_facts(*facts: Fact):
-	# print("facts", facts)
 	for fact in facts:
+		assert not fact.is_variable, "Cannot have variable facts"
 		if fact not in Fact.all_facts:
 			Fact.all_facts.append(fact)
 

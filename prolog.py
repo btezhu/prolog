@@ -3,7 +3,7 @@ from itertools import product
 import sys
 from typing import Optional
 
-from parser import Lexer, TokenType, parse_fact, parse_fact_or_rule
+from parser import Lexer, parse_statement, parse_query
 from term_fact_rule import Expr, ExprOrFact, ExprType, Fact, Rule, Term, TermType, add_facts, add_rules
 
 debug = False
@@ -62,48 +62,55 @@ def print_query(result: bool | list[dict[str, Term]]):
 			print()
 	else: assert False, result
 	
+# TODO: Proper error reporting for syntax/runtime errors
 def handle_query(query_str: str):
 	query_str, *_ = query_str.strip().split("%")
 	if not query_str: return
 	lexer = Lexer(query_str)
-	fact = parse_fact(lexer)
-	lexer.expect(TokenType.PERIOD)
-	lexer.expect(TokenType.EOF)
-	print_query(query(fact))
+	fact_or_expr = parse_query(lexer)
+	print_query(query(fact_or_expr))
 
 def handle_statement(statement: str):
 	statement, *_ = statement.strip().split("%")
 	if not statement: return
 	lexer = Lexer(statement)
-	fact_or_rule = parse_fact_or_rule(lexer)
+	fact_or_rule = parse_statement(lexer)
 
-	if isinstance(fact_or_rule, Fact):
-		add_facts(fact_or_rule)
-	elif isinstance(fact_or_rule, Rule):
-		add_rules(fact_or_rule)
-	else:
-		assert False, f"Unimplemented: {fact_or_rule}"
+	if isinstance(fact_or_rule, Fact): add_facts(fact_or_rule)
+	elif isinstance(fact_or_rule, Rule): add_rules(fact_or_rule)
+	else: assert False, f"Unimplemented: {fact_or_rule}"
 
+def load_file(path: str):
+	with open(path, 'r') as f:
+		for line in f.readlines():
+			handle_statement(line)
 
-def handle_command(command: list[str]) -> bool:
+def handle_command(command: list[str]):
 	match command:
-		case ['q']: return True
-		case ['l', path]: 
-			with open(path, 'r') as f:
-				for line in f.readlines():
-					handle_statement(line)
+		case ['q']: exit(0)
+		case ['l', path]: load_file(path)
 		case ['rules']: Rule.print_all()
 		case ['terms']: Term.print_all()
 		case ['facts']: Fact.print_all()
-		case _:
-			assert False, f"Unknown command: {command}"
-	return False
+		case _: assert False, f"Unknown command: {command}"
 
 COMMAND_PREFIX = ':'
 
-def main(argv):
-	for arg in argv[1:]:
-		handle_command(["l", arg])
+def handle_repl(repl_input: str):
+	"""
+	Handle a REPL command/query.
+
+	Returns True if the REPL needs to be exited.
+	"""
+	if not repl_input: return
+	if repl_input.startswith(COMMAND_PREFIX): 
+		handle_command(repl_input.removeprefix(COMMAND_PREFIX).split())
+	else:
+		handle_query(repl_input)
+
+def main(files_to_load: list[str]):
+	for path in files_to_load:
+		load_file(path)
 	while True:
 		command = input("?- ")
 		if command.startswith(COMMAND_PREFIX):
@@ -111,4 +118,4 @@ def main(argv):
 		else:
 			handle_query(command)
 
-if __name__ == '__main__': main(sys.argv)
+if __name__ == '__main__': main(sys.argv[1:])

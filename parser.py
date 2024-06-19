@@ -57,17 +57,11 @@ class Lexer:
 			return Lexer(f.read())
 		
 	def advance(self) -> str:
+		# TODO: Actually advance the location
 		self.position += 1
 		return self.source[self.position] if self.position < len(self.source) else ''
-		# assert False
 
 	def next_token(self) -> Token:
-		was_none = self.peeked is None
-		token = self.next_token_()
-		# if was_none: print(token)
-		return token
-
-	def next_token_(self) -> Token:
 		if self.peeked is not None:
 			token, self.peeked = self.peeked, None
 			return token
@@ -91,8 +85,7 @@ class Lexer:
 				self.advance()
 				self.advance()
 				return Token(':-', TokenType.COLONDASH, location)
-			case c:
-				assert False, f"Unimplemented: '{c}'"
+			case c: assert False, f"Unimplemented: '{c}'"
 
 	def peek_token(self) -> Token:
 		if self.peeked is not None: return self.peeked
@@ -155,11 +148,17 @@ def parse_expression_at_level(lexer: Lexer, level: int) -> ExprOrFact:
 def parse_fact_or_expr(lexer: Lexer) -> ExprOrFact:
 	return parse_expression_at_level(lexer, 0)
 
-def parse_fact_or_rule(lexer: Lexer) -> Fact | Rule:
+def parse_statement(lexer: Lexer) -> Fact | Rule:
 	fact = parse_fact(lexer)
 	if lexer.take_token(TokenType.COLONDASH):
 		return Rule(fact, parse_fact_or_expr(lexer))
 	lexer.expect(TokenType.PERIOD)
 	lexer.expect(TokenType.EOF)
-	# print()
+	assert not fact.is_variable, f"Unimplemented: variable facts/bodyless rules"
 	return fact
+
+def parse_query(lexer: Lexer) -> ExprOrFact:
+	fact_or_expr = parse_fact_or_expr(lexer)
+	lexer.expect(TokenType.PERIOD)
+	lexer.expect(TokenType.EOF)
+	return fact_or_expr
