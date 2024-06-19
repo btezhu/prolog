@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Optional
 
-from term_fact_rule import And, ExprOrFact, Fact, Rule, Term
+from term_fact_rule import And, ExprOrFact, Fact, Or, Rule, Term
 
 @dataclass
 class Location:
@@ -17,6 +17,7 @@ class TokenType(Enum):
 	EOF = "eof"
 	COMMA = "comma"
 	COLONDASH = "colon-dash"
+	SEMICOLON = "semicolon"
 
 	@staticmethod
 	def from_char(c: str) -> 'TokenType':
@@ -25,6 +26,7 @@ class TokenType(Enum):
 			case ')': return TokenType.RPAREN
 			case '.': return TokenType.PERIOD
 			case ',': return TokenType.COMMA
+			case ';': return TokenType.SEMICOLON
 			case _: assert False, c
 
 	def __repr__(self) -> str:
@@ -80,7 +82,7 @@ class Lexer:
 				while self.position < len(self.source) and (self.source[self.position].isalpha() or self.source[self.position] == '_'): self.advance()
 				ident = self.source[start:self.position]
 				return Token(ident, TokenType.IDENT, start_location)
-			case c if c in '().,': 
+			case c if c in '().,;': 
 				location = self.location
 				self.advance()
 				return Token(c, TokenType.from_char(c), location)
@@ -139,7 +141,8 @@ def parse_primary(lexer: Lexer) -> ExprOrFact:
 	return parse_fact(lexer)
 
 precedences: list[dict[TokenType, Callable[[ExprOrFact, ExprOrFact], ExprOrFact]]] = [
-	{TokenType.COMMA: And}
+	{TokenType.COMMA: And},
+	{TokenType.SEMICOLON: Or}
 ]
 
 def parse_expression_at_level(lexer: Lexer, level: int) -> ExprOrFact:
