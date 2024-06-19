@@ -3,7 +3,7 @@ from itertools import product
 import sys
 from typing import Optional
 
-from parser import Lexer, parse_fact, parse_fact_or_rule
+from parser import Lexer, TokenType, parse_fact, parse_fact_or_rule
 from term_fact_rule import Expr, ExprOrFact, ExprType, Fact, Rule, Term, TermType, add_facts, add_rules
 
 debug = False
@@ -53,8 +53,10 @@ def query(fact: ExprOrFact, depth: int=0, needs_all_var_answers:bool=True) -> bo
 		return query_simple(fact, depth)
 	
 def print_query(result: bool | list[dict[str, Term]]):
-	if isinstance(result, bool): print(result)
+	if isinstance(result, bool): print({True: "yes", False: "no"}[result])
 	elif isinstance(result, list):
+		if not result:
+			print("no")
 		for var_dict in result:
 			[print(f"{var} = {var_dict[var]}") for var in var_dict]
 			print()
@@ -65,6 +67,8 @@ def handle_query(query_str: str):
 	if not query_str: return
 	lexer = Lexer(query_str)
 	fact = parse_fact(lexer)
+	lexer.expect(TokenType.PERIOD)
+	lexer.expect(TokenType.EOF)
 	print_query(query(fact))
 
 def handle_statement(statement: str):
